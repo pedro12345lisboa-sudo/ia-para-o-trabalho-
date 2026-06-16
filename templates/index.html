@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BotQuímica</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Mono:wght@700&display=swap" rel="stylesheet"/>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter','sans-serif'], mono: ['Space Mono','monospace'] },
+          colors: {
+            bg: '#0b0f1c', surface: '#111827', card: '#1a2236',
+            border: '#1e2d45', accent: '#3b82f6', muted: '#64748b'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    *{ box-sizing:border-box; }
+    body{ background:#0b0f1c; font-family:'Inter',sans-serif; }
+
+    ::-webkit-scrollbar{ width:4px; }
+    ::-webkit-scrollbar-track{ background:#0b0f1c; }
+    ::-webkit-scrollbar-thumb{ background:#1e2d45; border-radius:4px; }
+
+    .atom-bg{
+      background-image:
+        radial-gradient(circle at 15% 15%, rgba(59,130,246,.07) 0%, transparent 50%),
+        radial-gradient(circle at 85% 85%, rgba(20,184,166,.05) 0%, transparent 50%),
+        radial-gradient(circle at 70% 20%, rgba(245,158,11,.04) 0%, transparent 40%);
+    }
+    .grid-bg{
+      background-image:
+        linear-gradient(rgba(30,45,69,.35) 1px, transparent 1px),
+        linear-gradient(90deg,rgba(30,45,69,.35) 1px, transparent 1px);
+      background-size:40px 40px;
+    }
+
+    @keyframes slideUp{
+      from{ opacity:0; transform:translateY(10px); }
+      to  { opacity:1; transform:translateY(0); }
+    }
+    @keyframes blink{
+      0%,100%{ opacity:1; } 50%{ opacity:.25; }
+    }
+    .msg-in{ animation:slideUp .28s ease forwards; }
+    .dot{ display:inline-block; animation:blink 1.2s ease infinite; }
+    .dot:nth-child(2){ animation-delay:.2s; }
+    .dot:nth-child(3){ animation-delay:.4s; }
+
+    #input-msg:focus{
+      outline:none;
+      border-color:#3b82f6;
+      box-shadow:0 0 0 1px rgba(59,130,246,.25);
+    }
+
+    .chip{
+      background:#1a2236; border:1px solid #1e2d45; color:#94a3b8;
+      border-radius:999px; padding:5px 14px; font-size:12px;
+      cursor:pointer; white-space:nowrap; flex-shrink:0;
+      transition:all .15s ease;
+    }
+    .chip:hover{ background:#1e2d45; border-color:#3b82f6; color:#e2e8f0; }
+
+    .el-pill{
+      display:inline-flex; align-items:center; gap:4px;
+      padding:3px 10px; border-radius:999px; font-size:11px;
+      font-weight:700; font-family:'Space Mono',monospace;
+      cursor:pointer; border:1px solid transparent;
+      transition:transform .15s ease;
+    }
+    .el-pill:hover{ transform:translateY(-1px); }
+
+    .sidebar-btn{
+      text-align:left; padding:7px 12px; border-radius:10px;
+      font-size:13px; color:#94a3b8; cursor:pointer;
+      transition:all .15s ease; background:transparent; border:none; width:100%;
+    }
+    .sidebar-btn:hover{ background:#1a2236; color:#e2e8f0; }
+
+    .bot-text strong{ color:#93c5fd; font-weight:600; }
+    .bot-text em{ color:#fbbf24; font-style:italic; }
+    .bot-text code{
+      background:#0f172a; border:1px solid #1e2d45; border-radius:4px;
+      padding:1px 6px; font-family:'Space Mono',monospace; font-size:12px; color:#67e8f9;
+    }
+    .bot-text p{ margin-bottom:6px; }
+    .bot-text p:last-child{ margin-bottom:0; }
+  </style>
+</head>
+
+<body class="h-screen flex flex-col atom-bg">
+
+<!-- ── HEADER ── -->
+<header class="flex-shrink-0 flex items-center justify-between px-5 py-3 border-b border-[#1e2d45] bg-[#111827]/80 backdrop-blur-sm">
+  <div class="flex items-center gap-3">
+    <div class="w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
+         style="background:linear-gradient(135deg,#1d4ed8,#0891b2)">⚗</div>
+    <div>
+      <p class="text-white font-semibold text-sm leading-tight">BotQuímica</p>
+      <p class="text-[#475569] text-[10px]">Colégio Modelo de São Sebastião</p>
+    </div>
+  </div>
+
+  <!-- Elementos rápidos (header) -->
+  <div class="hidden sm:flex items-center gap-2">
+    <span class="el-pill" style="background:#422006;border-color:#a16207;color:#fbbf24"
+          onclick="perguntar('Ouro')">Au 79</span>
+    <span class="el-pill" style="background:#0f2338;border-color:#1e40af;color:#93c5fd"
+          onclick="perguntar('Ferro')">Fe 26</span>
+    <span class="el-pill" style="background:#2c1208;border-color:#9a3412;color:#fb923c"
+          onclick="perguntar('Cobre')">Cu 29</span>
+    <span class="el-pill" style="background:#0c1a26;border-color:#0e7490;color:#22d3ee"
+          onclick="perguntar('Oxigênio')">O 8</span>
+    <span class="el-pill" style="background:#1a1030;border-color:#6d28d9;color:#a78bfa"
+          onclick="perguntar('Mercúrio')">Hg 80</span>
+  </div>
+
+  <button onclick="limparChat()"
+          title="Nova conversa"
+          class="text-[#475569] hover:text-white transition-colors p-2 rounded-lg hover:bg-[#1a2236]">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+    </svg>
+  </button>
+</header>
+
+<!-- ── BODY ── -->
+<div class="flex flex-1 min-h-0">
+
+  <!-- SIDEBAR -->
+  <aside class="hidden lg:flex flex-col w-56 flex-shrink-0 border-r border-[#1e2d45] bg-[#111827]/60 p-4 gap-5 overflow-y-auto">
+
+    <div>
+      <p class="text-[#334155] text-[10px] font-semibold tracking-widest mb-2">TÓPICOS</p>
+      <div class="flex flex-col gap-0.5">
+        <button class="sidebar-btn" onclick="perguntar('metais de transição')">Metais de Transição</button>
+        <button class="sidebar-btn" onclick="perguntar('Tabela Periódica')">Tabela Periódica</button>
+        <button class="sidebar-btn" onclick="perguntar('classificações da matéria')">Classificações da Matéria</button>
+        <button class="sidebar-btn" onclick="perguntar('elementos representativos')">Elementos Representativos</button>
+        <button class="sidebar-btn" onclick="perguntar('NOX variável')">NOX Variável</button>
+      </div>
+    </div>
+
+    <div>
+      <p class="text-[#334155] text-[10px] font-semibold tracking-widest mb-2">EQUIPE</p>
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
+             onclick="perguntar('Ouro apresentado pelo Pedro')">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
+               style="background:#422006;color:#fbbf24">P</div>
+          <div>
+            <p class="text-[#cbd5e1] text-xs font-medium leading-tight">Pedro</p>
+            <p class="text-[#fbbf24] text-[10px] font-mono">Au — Ouro</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
+             onclick="perguntar('Ferro apresentado pelo Murilo')">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
+               style="background:#0f2338;color:#93c5fd">M</div>
+          <div>
+            <p class="text-[#cbd5e1] text-xs font-medium leading-tight">Murilo</p>
+            <p class="text-[#93c5fd] text-[10px] font-mono">Fe — Ferro</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
+             onclick="perguntar('Cobre apresentado pelo Kawan')">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
+               style="background:#2c1208;color:#fb923c">K</div>
+          <div>
+            <p class="text-[#cbd5e1] text-xs font-medium leading-tight">Kawan</p>
+            <p class="text-[#fb923c] text-[10px] font-mono">Cu — Cobre</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
+             onclick="perguntar('Oxigênio apresentado pelo Augusto')">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
+               style="background:#0c1a26;color:#22d3ee">A</div>
+          <div>
+            <p class="text-[#cbd5e1] text-xs font-medium leading-tight">Augusto</p>
+            <p class="text-[#22d3ee] text-[10px] font-mono">O — Oxigênio</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
+             onclick="perguntar('Mercúrio apresentado pelo Pietro')">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
+               style="background:#1a1030;color:#a78bfa">P</div>
+          <div>
+            <p class="text-[#cbd5e1] text-xs font-medium leading-tight">Pietro</p>
+            <p class="text-[#a78bfa] text-[10px] font-mono">Hg — Mercúrio</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- CHAT AREA -->
+  <div class="flex flex-col flex-1 min-w-0">
+
+    <!-- Messages -->
+    <div id="chat-box" class="flex-1 overflow-y-auto grid-bg px-4 py-6">
+
+      <!-- Welcome -->
+      <div id="welcome" class="flex flex-col items-center justify-center min-h-full gap-8 text-center py-8 max-w-lg mx-auto">
+        <div>
+          <div class="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4"
+               style="background:linear-gradient(135deg,#1e3a8a,#0e7490)">⚗️</div>
+          <h1 class="text-white text-2xl font-semibold mb-2">BotQuímica</h1>
+          <p class="text-[#64748b] text-sm leading-relaxed">
+            Fui criado com o conteúdo do trabalho do Colégio Modelo.<br>
+            Pergunta sobre qualquer elemento ou tema da apresentação!
+          </p>
+        </div>
+
+        <!-- Element cards -->
+        <div class="grid grid-cols-5 gap-2 w-full max-w-xs">
+          <div onclick="perguntar('Ouro')" class="cursor-pointer rounded-xl p-2.5 text-center hover:scale-105 transition-transform"
+               style="background:#422006;border:1px solid #a16207">
+            <p class="font-mono font-bold text-[#fbbf24] text-lg leading-none">Au</p>
+            <p class="text-[#92400e] text-[9px] mt-1">79</p>
+          </div>
+          <div onclick="perguntar('Ferro')" class="cursor-pointer rounded-xl p-2.5 text-center hover:scale-105 transition-transform"
+               style="background:#0f2338;border:1px solid #1e40af">
+            <p class="font-mono font-bold text-[#93c5fd] text-lg leading-none">Fe</p>
+            <p class="text-[#1e3a8a] text-[9px] mt-1">26</p>
+          </div>
+          <div onclick="perguntar('Cobre')" class="cursor-pointer rounded-xl p-2.5 text-center hover:scale-105 transition-transform"
+               style="background:#2c1208;border:1px solid #9a3412">
+            <p class="font-mono font-bold text-[#fb923c] text-lg leading-none">Cu</p>
+            <p class="text-[#7c2d12] text-[9px] mt-1">29</p>
+          </div>
+          <div onclick="perguntar('Oxigênio')" class="cursor-pointer rounded-xl p-2.5 text-center hover:scale-105 transition-transform"
+               style="background:#0c1a26;border:1px solid #0e7490">
+            <p class="font-mono font-bold text-[#22d3ee] text-lg leading-none">O</p>
+            <p class="text-[#164e63] text-[9px] mt-1">8</p>
+          </div>
+          <div onclick="perguntar('Mercúrio')" class="cursor-pointer rounded-xl p-2.5 text-center hover:scale-105 transition-transform"
+               style="background:#1a1030;border:1px solid #6d28d9">
+            <p class="font-mono font-bold text-[#a78bfa] text-lg leading-none">Hg</p>
+            <p class="text-[#4c1d95] text-[9px] mt-1">80</p>
+          </div>
+        </div>
+
+        <!-- Chips sugestão -->
+        <div class="flex flex-wrap justify-center gap-2">
+          <span class="chip" onclick="enviarChip(this)">O que é metal de transição?</span>
+          <span class="chip" onclick="enviarChip(this)">Por que o mercúrio é líquido?</span>
+          <span class="chip" onclick="enviarChip(this)">Diferença entre misturas?</span>
+          <span class="chip" onclick="enviarChip(this)">Usos do ferro na biologia</span>
+          <span class="chip" onclick="enviarChip(this)">O que é NOX variável?</span>
+        </div>
+      </div>
+
+      <!-- Messages container -->
+      <div id="messages" class="flex flex-col gap-5 max-w-2xl mx-auto w-full"></div>
+    </div>
+
+    <!-- ── INPUT ── -->
+    <div class="flex-shrink-0 border-t border-[#1e2d45] bg-[#111827]/80 backdrop-blur-sm px-4 pt-3 pb-4">
+
+      <!-- Quick chips after first message -->
+      <div id="quick-chips" class="hidden flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-none">
+        <span class="chip" onclick="enviarChip(this)">Pode dar um exemplo?</span>
+        <span class="chip" onclick="enviarChip(this)">Explica mais simples</span>
+        <span class="chip" onclick="enviarChip(this)">Quais são as aplicações?</span>
+        <span class="chip" onclick="enviarChip(this)">Como cai na prova?</span>
+      </div>
+
+      <div class="flex items-end gap-3 max-w-2xl mx-auto">
+        <textarea id="input-msg"
+                  rows="1"
+                  placeholder="Pergunte sobre química, elementos, tabela periódica..."
+                  class="flex-1 bg-[#0b0f1c] border border-[#1e2d45] rounded-2xl px-4 py-3 text-sm text-white placeholder-[#334155] resize-none leading-relaxed transition-all"
+                  style="min-height:48px;max-height:130px;overflow-y:auto"
+                  onkeydown="tecla(event)"
+                  oninput="autoResize(this)"></textarea>
+
+        <button id="btn-enviar"
+                onclick="enviar()"
+                class="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all hover:opacity-90 active:scale-95 disabled:opacity-40"
+                style="background:linear-gradient(135deg,#2563eb,#0891b2)">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+          </svg>
+        </button>
+      </div>
+      <p class="text-center text-[#1e2d45] text-[10px] mt-2">
+        Colégio Modelo de São Sebastião · Trabalho de Química · 2026
+      </p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let historico = [];
+let carregando = false;
+
+// ── ENVIO ──
+async function enviar(texto) {
+  const input = document.getElementById('input-msg');
+  const msg = (texto || input.value).trim();
+  if (!msg || carregando) return;
+
+  input.value = '';
+  autoResize(input);
+  esconderBoas();
+  adicionarMensagemUser(msg);
+  historico.push({ role: 'user', content: msg });
+
+  const idTyping = mostrarTyping();
+  carregando = true;
+  document.getElementById('btn-enviar').disabled = true;
+
+  try {
+    const resp = await fetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ historico })
+    });
+
+    const data = await resp.json();
+    removerTyping(idTyping);
+
+    if (data.erro) {
+      adicionarMensagemBot('Erro: ' + data.erro, true);
+    } else {
+      historico.push({ role: 'assistant', content: data.resposta });
+      adicionarMensagemBot(data.resposta);
+      document.getElementById('quick-chips').style.display = 'flex';
+    }
+
+    if (historico.length > 20) historico = historico.slice(-20);
+
+  } catch(e) {
+    removerTyping(idTyping);
+    adicionarMensagemBot('Problema de conexão com o servidor. Certifique que o app.py está rodando.', true);
+  }
+
+  carregando = false;
+  document.getElementById('btn-enviar').disabled = false;
+  input.focus();
+}
+
+function perguntar(tema) { enviar('Me explica sobre ' + tema); }
+function enviarChip(el)  { enviar(el.textContent.trim()); }
+
+// ── DOM ──
+function esconderBoas() {
+  const w = document.getElementById('welcome');
+  if (w) w.style.display = 'none';
+}
+
+function adicionarMensagemUser(texto) {
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'flex justify-end msg-in';
+  div.innerHTML = `
+    <div class="max-w-[78%]">
+      <div class="rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm leading-relaxed text-white"
+           style="background:linear-gradient(135deg,#1d4ed8,#0891b2)">
+        ${escHtml(texto)}
+      </div>
+    </div>`;
+  msgs.appendChild(div);
+  rolarFundo();
+}
+
+function adicionarMensagemBot(texto, isErro=false) {
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'flex gap-3 msg-in';
+  const cor = isErro ? '#ef4444' : '#1e2d45';
+  div.innerHTML = `
+    <div class="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center text-base mt-0.5"
+         style="background:linear-gradient(135deg,#1e3a8a,#0e7490)">⚗</div>
+    <div class="flex-1 min-w-0">
+      <p class="text-[#334155] text-[10px] font-semibold mb-1 tracking-wider">BOTQUÍMICA</p>
+      <div class="rounded-2xl rounded-tl-sm px-4 py-3 text-sm leading-relaxed bot-text"
+           style="background:#1a2236;border:1px solid ${cor};color:${isErro?'#f87171':'#cbd5e1'}">
+        ${formatarTexto(texto)}
+      </div>
+    </div>`;
+  msgs.appendChild(div);
+  rolarFundo();
+}
+
+let nTyping = 0;
+function mostrarTyping() {
+  const id = 'tp' + (++nTyping);
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.id = id;
+  div.className = 'flex gap-3';
+  div.innerHTML = `
+    <div class="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center text-base"
+         style="background:linear-gradient(135deg,#1e3a8a,#0e7490)">⚗</div>
+    <div class="rounded-2xl rounded-tl-sm px-4 py-3" style="background:#1a2236;border:1px solid #1e2d45">
+      <span class="dot text-[#475569] text-xl">•</span>
+      <span class="dot text-[#475569] text-xl">•</span>
+      <span class="dot text-[#475569] text-xl">•</span>
+    </div>`;
+  msgs.appendChild(div);
+  rolarFundo();
+  return id;
+}
+function removerTyping(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function limparChat() {
+  historico = [];
+  document.getElementById('messages').innerHTML = '';
+  document.getElementById('quick-chips').style.display = 'none';
+  const w = document.getElementById('welcome');
+  w.style.display = 'flex';
+}
+
+function rolarFundo() {
+  const box = document.getElementById('chat-box');
+  requestAnimationFrame(() => { box.scrollTop = box.scrollHeight; });
+}
+
+// ── FORMATAÇÃO ──
+function formatarTexto(txt) {
+  return escHtml(txt)
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/`(.+?)`/g,'<code>$1</code>')
+    .split('\n\n').map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+}
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── INPUT ──
+function tecla(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); }
+}
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 130) + 'px';
+}
+
+window.addEventListener('load', () => {
+  document.getElementById('input-msg').focus();
+});
+</script>
+</body>
+</html>
