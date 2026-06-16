@@ -2,8 +2,13 @@
 BotQuímica — Backend Flask + Groq (gratuito)
 """
 
+import os
+import os
 import requests
 from flask import Flask, request, jsonify, render_template
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -34,8 +39,10 @@ def add_cors(response):
 
 
 def chamar_groq(historico):
+    if not GROQ_API_KEY:
+        return "Chave não configurada. Crie um arquivo .env com GROQ_API_KEY=sua_chave"
+
     mensagens = [{"role": "system", "content": CONTEXTO}]
-    # Só últimas 4 mensagens para economizar tokens
     for msg in historico[-4:]:
         mensagens.append({"role": msg["role"], "content": msg["content"]})
 
