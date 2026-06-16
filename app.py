@@ -3,12 +3,8 @@ BotQuímica — Backend Flask + Groq (gratuito)
 """
 
 import os
-import os
 import requests
 from flask import Flask, request, jsonify, render_template
-from dotenv import load_dotenv
-
-load_dotenv()
 
 app = Flask(__name__)
 
@@ -40,7 +36,7 @@ def add_cors(response):
 
 def chamar_groq(historico):
     if not GROQ_API_KEY:
-        return "Chave não configurada. Crie um arquivo .env com GROQ_API_KEY=sua_chave"
+        return "Chave não configurada."
 
     mensagens = [{"role": "system", "content": CONTEXTO}]
     for msg in historico[-4:]:
@@ -92,8 +88,5 @@ def ping():
 
 
 if __name__ == "__main__":
-    print("\n╔══════════════════════════════════════╗")
-    print("║   BotQuímica — servidor iniciado     ║")
-    print("║   http://localhost:5000              ║")
-    print("╚══════════════════════════════════════╝\n")
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
